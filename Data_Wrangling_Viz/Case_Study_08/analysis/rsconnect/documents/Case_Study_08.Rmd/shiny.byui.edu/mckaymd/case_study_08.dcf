@@ -1,0 +1,12 @@
+name: case_study_08
+title: Case_Study_08
+username: mckaymd
+account: mckaymd
+server: shiny.byui.edu
+hostUrl: http://shiny.byui.edu:3939/__api__
+appId: 85
+bundleId: 141
+url: http://shiny.byui.edu:3939/content/85/
+when: 1509995718.38597
+asMultiple: FALSE
+asStatic: TRUE

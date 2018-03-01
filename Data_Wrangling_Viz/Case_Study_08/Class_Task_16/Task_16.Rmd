@@ -1,0 +1,67 @@
+---
+title: 'Task 16: The US Grocer (KR)'
+author: "McKay Davis"
+output: 
+  html_document:
+    code_folding: hide
+    theme: united
+    keep_md: TRUE
+---
+
+```{r setup, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(dygraphs)
+library(tidyquant)
+library(xts)
+library(DT)
+
+KR <- tq_get("KR", get = "stock.prices", from = "2012-01-01") %>%
+  xts(order.by = .$date)
+```
+
+##Kroger (KR) Stock Prices
+
+```{r, fig.align = 'center', fig.width = 12, fig.height = 6}
+datatable(KR, colnames = c("Time" = 1), extensions = 'Scroller', options = list(
+  deferRender = TRUE,
+  scrollY = 200,
+  scroller = TRUE
+)) %>% 
+  formatStyle('adjusted',  color = 'darkblue', backgroundColor = 'yellow', fontWeight = 'bold')
+
+```
+
+<br/>
+
+```{r, fig.align = 'center', fig.width = 9, fig.height = 6}
+KR <- KR[,7]
+dygraph(KR, main = "Kroger Adjusted Stock Prices") %>% 
+  dySeries("adjusted", label = "Adjusted") %>% 
+  dyAxis("x", drawGrid = FALSE) %>%
+  dyAxis("y", label = "Adjusted") %>%
+  dyOptions(axisLineColor = "navy", 
+            gridLineColor = "lightblue",
+            fillGraph = TRUE) %>% 
+  dyAnnotation("2014-2-6", text = "A", tooltip = "Unemployment Benefit Cashed, Less than Anticipated\nLeads to increase") %>%
+  dyAnnotation("2016-11-9", text = "B", tooltip = "Trump Wins Election") %>% 
+  dyAnnotation("2017-6-14", text = "C", tooltip = "Kroger Pricing a Problem as Walmart Competes") %>% 
+  dyRangeSelector(height = 20)
+
+```
+
+<br/>
+
+The plot above shows the adjusted KR stock prices for January 2012 - date. A couple points are labeled showing events of interest and their effect on the stock prices.
+
+######Details of Plot:
+I chose to get rid of the grid in favor of light horizontal lines as the main interest in the plot is the adjusted stock price. I filled the graphic for asthetic purposes. The slide bar is added for convenience. I did not label the x-axis because it is obvious what it is.
+
+####More on Annotations:
+<p>A: [Best Gains of The Year](http://money.cnn.com/2014/02/06/investing/stocks-markets/index.html)</p>
+<p>B: Donald Trump wins the presidential election which leads to overall increase.</p>
+<p>C: [Kroger Market Fails](https://www.forbes.com/sites/maggiemcgrath/2017/06/15/kroger-sinks-16-as-first-quarter-sales-fall-and-forward-guidance-is-slashed/#37259468726d)</p>
+
+
+

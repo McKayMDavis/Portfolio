@@ -1,0 +1,159 @@
+---
+title: 'Case Study 11: Interacting with space'
+author: "McKay Davis"
+output: 
+  html_document:
+    code_folding: hide
+    theme: united
+    keep_md: true
+---
+<style>
+body {
+    background-color: #000000;
+    color: #ffffff;
+}
+</style>
+```{r setup, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(leaflet)
+library(USAboundaries)
+library(tidyverse)
+library(htmltools)
+library(rio)
+library(viridis)
+library(ggthemes)
+library(sf)
+
+bob <- import("permits.rda")
+```
+
+### US Building Permit Value
+
+I figured the best way to look at the overall US trend would be to simply look at a line graph. I used color to make it more interesting. The trend is obviously massively falling at 2005.
+
+```{r, fig.align = 'center', fig.width = 12, fig.height = 6}
+permits_us <- bob %>% 
+  filter(variable == "Single Family") %>% 
+  mutate(county_name = sapply(strsplit(.$countyname, split = " ", fixed = TRUE), function(x) (x[1]))) %>% 
+  rename(countyfp = county)
+
+counties_us <- us_counties() %>% 
+  mutate(countyfp = as.integer(countyfp)) %>% 
+  rename(StateAbbr = state_abbr)
+
+us_data <- permits_us %>% 
+  left_join(counties_us, by = c("StateAbbr", "countyfp"))
+
+
+us_data %>%
+  group_by(year) %>% 
+  summarise(vals = sum(value)) %>% 
+  ggplot(aes(y = vals, x = year, col = year)) +
+  geom_line(color = "black", size = 2) +
+  geom_line(color = "white") +
+  geom_line() +
+  geom_vline(xintercept = 2005, size = 1, color = "white", alpha = 0.5) +
+  geom_vline(xintercept = 2005) +
+  scale_color_viridis() +
+  theme_hc(bgcolor = "darkunica") +
+  theme(legend.position = "none") +
+  labs(y = "Building Permit Value", 
+       x = "Year", 
+       title = "Building Permit Value Plummets at 2005")
+```
+
+<br/>
+<hr/>
+<br/>
+
+###US States
+
+In this section, I simply subtracted the total value at 2010 for each state from the total value at 2005 for each state. The legend does not have even breaks in order to make interesting trends visible. The hover mechanism allows the user to see the exact value difference for each state.
+
+Of note is Washington D.C. which actually increased in building permit value from 2005 to 2010.
+
+
+```{r, fig.align = 'center', fig.width = 9.5, fig.height = 6}
+permits_us2 <- bob %>% 
+  filter(variable == "Single Family") %>% 
+  select(StateAbbr, year, value) %>% 
+  group_by(StateAbbr, year) %>% 
+  summarize(value = sum(value))
+
+us_states <- us_states() %>% 
+  rename(StateAbbr = state_abbr)
+
+us_data2 <- permits_us2 %>% 
+  left_join(us_states, by = c("StateAbbr")) %>% 
+  filter(year %in% c(2005, 2006, 2007, 2008, 2009, 2010)) %>% 
+  select(StateAbbr, year, value, geometry) %>% 
+  spread(year, value) %>% 
+  mutate(diff = `2005` - `2010`) %>%
+  st_sf()
+
+#2005-2010 diffs
+bins <- c(-52, 0, 1000, 5000, 10000, 20000, 50000, 100000, 200000)
+pal <- colorBin("viridis", domain = us_data2$diff, bins = bins)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g deficit",
+  us_data2$StateAbbr, us_data2$diff
+) %>% lapply(htmltools::HTML)
+
+leaflet(us_data2) %>%
+  addTiles() %>% 
+  addPolygons(fillColor = ~pal(diff),
+              weight = 2,
+              opacity = 1,
+              color = "black",
+              fillOpacity = 5,
+              highlight = highlightOptions(weight = 5,
+                                           color = "#666",
+                                           dashArray = "",
+                                           fillOpacity = 0.7,
+                                           bringToFront = TRUE),
+              label = labels,
+              labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                          textsize = "15px",
+                                          direction = "auto")) %>% 
+  addLegend(pal = pal, values = ~density, opacity = 0.7, title = NULL,
+            position = "bottomright") %>% 
+  addProviderTiles(providers$CartoDB.DarkMatterNoLabels) %>% 
+  setView(-100.0382679, 42.3489054, zoom = 3)
+
+```
+
+<br/>
+<hr/>
+<br/>
+
+#Arizona's Maricopa County
+
+Here's where I was living during this economic recession. It appears as though Maricopa county may have experienced the effects of the building permit devaluing a year earlier than the national average.
+
+```{r, fig.align = 'center', fig.width = 12, fig.height = 6}
+az_data <- us_data %>% 
+  filter(StateAbbr == "AZ", county_name == "Maricopa")
+
+az_data %>% 
+  ggplot(aes(y = value, x = year, col = year)) +
+  geom_line(color = "black", size = 2) +
+  geom_line(color = "white") +
+  geom_line() +
+  geom_vline(xintercept = 2005, size = 1, color = "white", alpha = 0.5) +
+  geom_vline(xintercept = 2005) +
+  geom_text(aes(x = 2003, y = 25000, label = "2004"), color = "yellow") +
+  geom_vline(xintercept = 2004, size = 1, color = "white", alpha = 0.5) +
+  geom_vline(xintercept = 2004) +
+  geom_text(aes(x = 2006, y = 45000, label = "2005"), color = "yellow") +
+  scale_color_viridis() +
+  theme_hc(bgcolor = "darkunica") +
+  theme(legend.position = "none") +
+  labs(y = "Building Permit Value", 
+       x = "Year", 
+       title = "Building Permit Values in Maricopa AZ",
+       subtitle = "Downturn Possibly Begins in 2004")
+```
+
+<br/>
+<br/>

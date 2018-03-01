@@ -1,0 +1,130 @@
+---
+title: 'Case Study 8: Interacting with time'
+author: "McKay Davis"
+output: 
+  html_document:
+    code_folding: hide
+    theme: united
+    keep_md: TRUE
+---
+
+```{r setup, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(dygraphs)
+library(tidyquant)
+library(xts)
+library(DT)
+library(ggthemes)
+library(forcats)
+library(plotly)
+
+#-------------------------------------------------------------------------------------
+#Read Data
+#-------------------------------------------------------------------------------------
+ticks <- c("CXW", "F", "GM", "JCP", "KR", "WDC", "NKE","T", "WDAY", "WFC", "WMT")
+
+stocks <-  ticks %>% 
+  tq_get(get = "stock.prices", from = "2012-01-01")
+
+#-------------------------------------------------------------------------------------
+#Create Portfolio if more than 2 stocks
+#-------------------------------------------------------------------------------------
+stocksMonth <- stocks %>% 
+  group_by(symbol) %>% 
+  tq_transmute(select = adjusted, 
+            mutate_fun = periodReturn, 
+            period = "monthly",
+            col_rename = "Ra")
+wts = vector()
+wts <- vapply(1:length(ticks), function(x) {1/length(ticks)}, FUN.VALUE = 0.0)
+
+stocksPort <- stocksMonth %>% 
+  tq_portfolio(assets_col = symbol,
+               returns_col = Ra,
+               weights = wts,
+               col_rename = "Ra")
+```
+
+###Portfolio
+
+```{r, fig.align = 'center', fig.width = 12, fig.height = 6}
+#Portfolio
+stocksPort %>% 
+  ggplot(aes(x = date, y = Ra)) +
+    geom_line() +
+    theme_hc() +
+    labs(y = "returns", title = "Portfolio of Returns\nEach Tick Bearing Equal Weight")
+
+```
+
+The portfolio option gives us an idea of the performance of the whole group of stocks together. I chose to use ggplot2 because dygraph doesn't work so well for portfolios. We see a great deal of volatility in our portfolio with many rises and falls.
+
+###Adjusted
+
+```{r, fig.align = 'center', fig.width = 10, fig.height = 6}
+colors <- c("darkorange", 
+  "darkred", 
+  "darkblue", 
+  "darkgreen", 
+  "purple4", 
+  "goldenrod3",
+  "brown",
+  "grey",
+  "black",
+  "firebrick4",
+  "tan")
+
+#Adjusted
+dystock <- stocks %>%
+  select(date, symbol, adjusted) %>%
+  spread(symbol, adjusted) %>% 
+  xts(order.by = .$date)
+
+dystock <- dystock[,-1]
+dygraph(dystock) %>% 
+  dyAxis("x", drawGrid = FALSE) %>%
+  dyAxis("y", label = "adjusted value ($)") %>%
+  dyOptions(axisLineColor = "navy", 
+            gridLineColor = "lightblue") %>% 
+  dyHighlight(highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 1))
+```
+
+```{r, fig.align = 'center', fig.width = 12, fig.height = 6}
+#Adjusted
+stocks %>%
+  ggplot(aes(x = date, y = adjusted, col = symbol)) +
+    geom_line() +
+    facet_wrap( ~ fct_reorder(symbol, adjusted)) +
+    theme_hc() + 
+    theme(axis.text.x = element_text(angle = 90, size = 8)) +
+    theme(legend.position = "none") +
+    scale_color_manual(values = colors) +
+    labs(title = "Adjusted Stock Price Per Tick")
+```
+
+First I have a dygraph version of the adjusted stock prices for each stock. This provides us with a simple way to view specific data points during specific dates. To make the overall trend more apparent, I broke out ggplot2 to facet by each stock. It looks like WorkDay (WDAY) stock is contributing to the variability in our returns portfolio as is Walmart (WMT) and Western Digital Corporation (WDC). It so happens that these are our stocks with the highest average adjusted values though.
+
+###Volume
+
+```{r, fig.align = 'center', fig.width = 10, fig.height = 6}
+#Volume
+stocks %>% 
+  ggplot(aes(x = date, y = volume/100000, col = symbol)) +
+    geom_line(alpha = .2) +
+    geom_smooth() +
+    facet_wrap( ~ fct_reorder(symbol, adjusted)) +
+    theme_hc() + 
+    theme(axis.text.x = element_text(angle = 90, size = 8)) +
+    theme(legend.position = "none") +
+    coord_cartesian(ylim = c(-100, 2500)) +
+    scale_color_manual(values = colors) +
+    labs(y = "volume/100,000")
+```
+
+I'm not entirely sure what volume tells us. I guess it would be interesting to know why the volume for JCP is so high around 2013 though.
+
+
+

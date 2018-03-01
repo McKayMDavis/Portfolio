@@ -1,0 +1,124 @@
+---
+title: 'Case Study 7: It’s about time'
+author: "McKay Davis"
+output: 
+  html_document:
+    code_folding: hide
+    theme: united
+    keep_md: TRUE
+---
+
+```{r setup, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = 'center', fig.width = 12, fig.height = 6)
+
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+library(forcats)
+library(knitr)
+
+dirty.dat <- read_csv("https://byuistats.github.io/M335/data/sales.csv") %>% as_tibble()
+
+clean.dat <- dirty.dat %>%
+  filter(Name != "Missing", weekdays(Time, abbreviate = FALSE) != "Sunday" & weekdays(Time, abbreviate = FALSE) != "Saturday" ) %>% #consider removing sunday observations totalling $166
+  mutate(Time = with_tz(Time, "America/Boise"))
+
+clean.dat.hr <- clean.dat %>% 
+  group_by(Name, Type, hour(Time), weekdays(Time, abbreviate = TRUE)) %>% 
+  summarise(Amount = sum(Amount, na.rm = TRUE)) %>% 
+  rename(Hour = `hour(Time)`, Day = `weekdays(Time, abbreviate = TRUE)`)
+
+clean.dat.min <- clean.dat %>%
+  group_by(Name, Type, hour(Time), minute(Time), weekdays(Time, abbreviate = TRUE)) %>% 
+  summarise(Amount = sum(Amount, na.rm = TRUE)) %>% 
+  rename(Hour = `hour(Time)`, Minute = `minute(Time)`, Day = `weekdays(Time, abbreviate = TRUE)`)
+
+orders <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+```
+
+## Revenue
+
+```{r}
+#Total revenue over course of survey period
+clean.dat.rev <- clean.dat %>%
+  group_by(Name) %>% 
+  summarise(`Total Revenue` = sum(Amount, na.rm = TRUE))
+kable(clean.dat.rev)
+
+#Total amount sold at each hour for each day of the week across full length of
+#survey period.
+clean.dat.hr %>% 
+  ggplot(aes(y = Amount, x = Hour, col = Name)) +
+    geom_point(size = .5) +
+    geom_line() +
+    facet_grid(Name ~ factor(Day, levels = orders)) +
+    coord_cartesian(ylim = c(-200, 1500), xlim = c(7, 24)) +
+    scale_x_continuous(breaks = c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24)) +
+    theme_fivethirtyeight() +
+    theme(legend.position = "none", axis.text.x = element_text(size = 6)) +
+    labs(title = "Hot Diggity\nHighest Total Hourly Revenue Across Days")
+```
+
+The table indicates company Hot Diggity as the overall champion in revenue over the three month survey period. When we look at the plot, we notice a couple things:
+1. Hot Diggity consistently has the highest total revenue across days.
+2. High revenue distributions are typically contained between 10 - 5.
+Based on these, Hot Diggity may be a company to look into further. 10 to 5 could be normal hours of operation.
+
+```{r}
+#Traffic
+clean.dat %>%
+  group_by(Name, Type) %>% 
+  mutate(Hour = hour(Time), Day = weekdays(Time, abbreviate = TRUE)) %>% 
+  filter(Hour < 16 & Hour > 8) %>% 
+  ggplot(aes(x = Hour, col = Type)) +
+    geom_density() +
+    facet_grid(Name ~ factor(Day, levels = orders)) +
+    theme_fivethirtyeight() +
+    theme(axis.text.x = element_text(size = 6)) +
+    guides(color = guide_legend(override.aes = list(size = 2))) +
+    labs(title = "Density of Sales\nConsistent in Sales Densities | primetime")
+```
+
+The above plot shows operation times between 9 and 4 (when sales are at their peak). It is interesting to note the consistency in distribution of sales (y-axis being percent # of sales) between Monday, Wednesday, and Friday and Tuesday and Thursday. This is something we would expect because of class schedules. Another interesting observation is that sales items of like type have very similar distributions (a pattern that will be perpetuated in the following plot). Of particular note to the question on hand is the consistency of sales in Hot Diggity.
+
+```{r}
+clean.dat %>%
+  group_by(Name, Type) %>% 
+  mutate(Hour = hour(Time), Day = weekdays(Time, abbreviate = TRUE)) %>% 
+  filter(Hour < 19 & Hour > 8) %>% 
+  ggplot(aes(x = Hour, col = Type)) +
+    geom_density() +
+    facet_grid(Name ~ factor(Day, levels = orders)) +
+    theme_fivethirtyeight() +
+    theme(axis.text.x = element_text(size = 6)) +
+    guides(color = guide_legend(override.aes = list(size = 2))) +
+    labs(title = "Density of Sales\nConsistent in Sales Densities | till 5")
+```
+
+Spreading out the distribution, we note that the observations for Hot Diggity on Friday have grown to somwhat resemble that of Tuesday and Thursday asside from the bump near the end of the day, which seems to be an interesting trend in most food items on Fridays. The fact that Friday seems to resemble Tuesday and Thursday indicates consistency in distribution of sales between days.
+
+## Conclusion
+
+I would greatly recommend investing time and money into Hot Diggity as their revenue performance as well as consistency in sales speaks for itself.
+
+
+
+Note: I noticed a plot on somebody else's repo that seems to indicate upward growth in Le Belle across weeks. I should look into this as it could change my conclusion.
+EDIT: I interpreted the other person's graphic incorrectly due to poor labeling. A plot of the trend of sale amount over each day may indicate upward trend in LeBelle that may point toward investing here as they may continue to see growth.
+
+```{r}
+clean.dat.day <- clean.dat %>%
+  group_by(Name, Type, yday(Time), weekdays(Time, abbreviate = TRUE)) %>% 
+  summarise(Amount = sum(Amount), na.rm = TRUE) %>% 
+  rename(Dayyr = `yday(Time)`, Day = `weekdays(Time, abbreviate = TRUE)`)
+
+clean.dat.day %>% 
+  filter(Dayyr > 125) %>% 
+  ggplot(aes(y = Amount, x = Dayyr, col = Type)) +
+    geom_point() +
+    geom_smooth(color = "black") +
+    facet_grid(. ~ Name) +
+    theme_bw()
+```
+

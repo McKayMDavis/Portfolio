@@ -1,0 +1,110 @@
+---
+title: 'Case Study 3: Reducing Gun Deaths (FiveThirtyEight)'
+author: "McKay Davis"
+output: 
+  html_document:
+    theme: united
+    code_folding: hide
+    keep_md: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(readr)
+library(tidyverse)
+
+gun <- read_csv("full_data.csv")
+
+gun$Season = NA
+gun$Season[gun$month %in% c("03", "04", "05")] <- "Spring"
+gun$Season[gun$month %in% c("06", "07", "08")] <- "Summer"
+gun$Season[gun$month %in% c("09", "10", "11")] <- "Fall"
+gun$Season[gun$month %in% c("12", "01", "02")] <- "Winter"
+
+gun <- subset(gun, select = -c(X1))
+gun <- subset(gun, !is.na(intent))
+
+gun$police1 = NA
+gun$police1[gun$police == 1] <- "By-Police"
+gun$police1[gun$police == 0] <- "Non-Police"
+```
+
+### Background
+
+```{r, fig.align='center', fig.width=12, fig.height=12}
+# Deaths by type, race, gender, and whether it was by police
+gun %>%
+  ggplot(aes(x = intent, fill = police1)) +
+    geom_bar() +
+    facet_grid(race ~ sex) +
+    scale_y_continuous(trans = "sqrt") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) +
+    labs(title = "Death Intent by Gender and Police Homicide", y = "Deaths (sqrt trans.)", x = "Death Intent", fill = "Police Committed")
+```
+
+The gist of the [article about gun deaths](http://www.cbsnews.com/pictures/controversial-police-shootings/) is that there are many more types of gun related deaths which actually contribute far more to total gun deaths than common media talks about. The main contributor is suicide which takes the lives of mostly white males. Another contributor is homicides committed by police officers which mostly affects males again.
+
+<hr/>
+<br/>
+
+```{r, fig.align='center', fig.width=12, fig.height=12}
+# Death Type and Season
+gun %>%
+  ggplot(aes(x = Season, fill = intent)) +
+    geom_bar() +
+    facet_grid(race ~ intent) +
+    scale_y_continuous(trans = "sqrt") +
+    theme_bw() + theme(legend.position="none") +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) +
+    labs(title = "Death Season by Intent and Race", y = "Deaths (sqrt trans.)")
+```
+
+The above plot shows each race, death intent, and season in which gun related deaths occured. It's plain to see that large contributors to gun related deaths are suicide in the white population and homicide in the black population. Both of which are highest in the summer.
+
+
+<br/>
+
+```{r, fig.align='center', fig.width=12, fig.height=6}
+# Death Type and Season
+gun %>%
+  ggplot(aes(x = Season)) +
+  geom_bar() +
+  facet_grid(. ~ intent) +
+  scale_y_continuous(trans = "sqrt") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) +
+  labs(title = "Target Homicide in Summer & Suicide in Spring and Summer", y = "Deaths (sqrt trans.)")
+
+```
+
+Based on the above plot, commercials would do well to be presented on accidental related deaths in the winter, homicide related deaths in the summer, and suicide in the spring and summer.
+
+
+<br/>
+
+```{r, fig.align='center', fig.width=12, fig.height=6}
+# Deaths by Race and Type
+gun %>%
+  ggplot(aes(x = race)) +
+  geom_bar() +
+  facet_grid(. ~ intent) +
+  scale_y_continuous(trans = "sqrt") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) +
+  labs(title = "Target Whites for Amount Suicide Reduction and Blacks for Homicide", y = "Deaths (sqrt trans.)", x = "Race")
+
+```
+
+This plot indicates the target audiences of the commercials. Accidental deaths are primarily a concern in the white population. Homicide related deaths are a problem mostly in the black population but also have a great presence in white and hispanic populations. Suicide related deaths are greatly present among the white population which far out-shadows the others.
+
+<br/>
+
+### Notes
+
+Perhaps we don't care about number of deaths and should be looking at proportional number of deaths. 
+
+We may wish to compare the race of the people committing violence as well as those receiving it.
+
+

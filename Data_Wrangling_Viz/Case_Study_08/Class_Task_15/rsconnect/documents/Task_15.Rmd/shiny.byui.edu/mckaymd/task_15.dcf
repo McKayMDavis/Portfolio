@@ -1,0 +1,12 @@
+name: task_15
+title: Task_15
+username: mckaymd
+account: mckaymd
+server: shiny.byui.edu
+hostUrl: http://shiny.byui.edu:3939/__api__
+appId: 34
+bundleId: 50
+url: http://shiny.byui.edu:3939/content/34/
+when: 1509487523.47451
+asMultiple: FALSE
+asStatic: TRUE

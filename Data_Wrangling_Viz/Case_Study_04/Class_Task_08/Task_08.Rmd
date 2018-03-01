@@ -1,0 +1,72 @@
+---
+title: 'Task 8: Clean and Reformat (aka tidy)'
+author: "McKay Davis"
+output: 
+  html_document:
+    code_folding: hide
+    theme: united
+    keep_md: TRUE
+---
+
+```{r setup, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = 'center', fig.width = 12, fig.height = 6)
+
+library(readr)
+library(readxl)
+library(haven)
+library(downloader)
+library(tidyverse)
+
+# read data
+dowRds <- read_rds(gzcon(url("https://github.com/byuistats/data/raw/master/Dart_Expert_Dow_6month_anova/Dart_Expert_Dow_6month_anova.RDS")))
+
+# create month end and year end columns and remove contest_period
+tidyDowRds <- dowRds %>%
+  separate(contest_period, into = c("rids","rids2"), sep = "-") %>%
+  separate(rids2, into = c("month_end", "year_end"), sep = -5) %>%
+  select(-one_of("rids"))
+```
+
+```{r}
+tidyDowRds %>%
+  filter(!is.na(year_end)) %>%
+  ggplot(aes(y = value, x = year_end, col = variable)) +
+    geom_point() +
+    geom_hline(data = subset(tidyDowRds, is.na(year_end)), aes(yintercept = value)) +
+    facet_grid(. ~ variable) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) +
+    theme(legend.position="none") +
+    labs(y = "returns", x = "year of return", title = "Index Return Spread")
+```
+
+This plot displays the spread of index returns by each index. It also displays each index's mean to make spread per year more obvious. While PROS has the highest average return, it also seems to have the greatest variability. DJIA has the second highest mean and a much tighter distribution about it.
+
+<hr/>
+
+```{r}
+# density curve w/ mean return
+tidyDowRds %>%
+ggplot(aes(x=value)) + 
+  geom_density(alpha=.2, aes(fill = variable)) +
+  geom_vline(data = subset(tidyDowRds, is.na(year_end)), aes(xintercept = value, col = variable), alpha = 0.4) +
+  labs(y = "density", x = "returns", title = "Index Return Density with Mean Return", fill = "Index", col = "Index") +
+  theme_bw()
+```
+
+This graphic gives an idea of the overall distribution of returns for each index. Again we get a feel for the tight distribution of DJIA returns and the loose distribution of PROS returns, while DARTS yeilds a fairly loose distribution as well, but with some outliers. The averages are also plotted for convenience in seeing the variability of means between indexes.
+
+<hr/>
+
+```{r}
+# spread data with years as columns and months as rows
+spreadTidyDowRds <- tidyDowRds %>%
+  filter(variable == "DJIA" & !is.na(month_end)) %>%
+  spread(key = year_end, value = value)
+
+knitr::kable(spreadTidyDowRds)
+```
+
+The above is a rearrangement of the data for the DJIA index only. It has `month_end` (or month of the six-month return) as rows and `year_end` (or year of the six-month return) as columns.
+
+<br/>
