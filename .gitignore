@@ -31,3 +31,14 @@ vignettes/*.pdf
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
+
+# Stuff added
+.Ruserdata
+dam
+hyd250
+shp
+wells
+Task_20.R
+climate_zone_fips.rda
+permits.rda
+restaurants.rda
